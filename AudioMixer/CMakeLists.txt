@@ -17,7 +17,6 @@ include_directories("include")
 
 # Find external libraries (e.g., Windows SDK)
 find_package(Threads REQUIRED)
-find_package(yaml-cpp REQUIRED)
 
 # Boost for Asio
 set(BOOST_ROOT "C:/Program Files/boost/boost_1_86_0")
@@ -25,7 +24,14 @@ include_directories(${BOOST_ROOT})
 
 # Add executable
 add_executable(AudioMixer ${SOURCES})
+
 configure_file(${PROJECT_SOURCE_DIR}/AudioMixerConfig.h.in ${PROJECT_SOURCE_DIR}/AudioMixerConfig.h)
+
+add_custom_command(TARGET AudioMixer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/config.yaml
+        $<TARGET_FILE_DIR:AudioMixer>/config.yaml
+)
 
 # Link system libraries
 target_link_libraries(AudioMixer

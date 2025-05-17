@@ -12,5 +12,5 @@ endif()
 project ("Scotts-AudioMixer" VERSION 0.1)
 
 # Include sub-projects.
+add_subdirectory(extern/yaml-cpp)
 add_subdirectory ("AudioMixer")
-
