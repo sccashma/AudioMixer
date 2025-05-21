@@ -1,5 +1,5 @@
 num_of_knobs: 5
-baud_rate: 9600
+baud_rate: 115200
 data_rate_ms: 50
 endpoints:
   - master
