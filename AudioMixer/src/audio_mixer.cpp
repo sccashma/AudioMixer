@@ -90,7 +90,6 @@ void audio_mixer_c::run(bool& exit_app)
 
         if (data) {
             // Make a decision based on the data.
-            audio_mixer::log("Received: " + *data);
             auto vals = extract_values(data.value());
             if (vals.size() != static_cast<int>(m_num_of_knobs)) {
                 audio_mixer::log_error(
@@ -100,8 +99,6 @@ void audio_mixer_c::run(bool& exit_app)
                 // Process the values
                 update(vals);
             }
-        } else {
-            audio_mixer::log("No data received");
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(this->m_data_rate_ms)));
     }
@@ -117,7 +114,6 @@ std::regex audio_mixer_c::create_regex(uint16_t count)
         fullPattern += "\\|" + numberPattern;
     }
     fullPattern += "$";
-    audio_mixer::log("Regex pattern: " + fullPattern);
 
     return std::regex(fullPattern);
 }
@@ -146,7 +142,6 @@ void audio_mixer_c::update_volumes(std::vector<int> const& values) {
 
 void audio_mixer_c::update(std::vector<int> const& values)
 {
-    audio_mixer::log("update: " + std::to_string(values.size()) + " values");
     update_volumes(values);
 
     // Get updated endpoints, filtering out ones that are not desired

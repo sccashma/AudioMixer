@@ -168,17 +168,14 @@ void serial_connection_c::main_read_loop(bool& exit_app)
         // audio_mixer::log("main_read_loop: waiting for line...");
         boost::system::error_code ec;
         size_t n = boost::asio::read_until(m_serial, buf, "\n", ec);
-        audio_mixer::log("main_read_loop: read_until returned, n=" + std::to_string(n) + ", ec=" + ec.message());
         if (ec) {
             audio_mixer::log_error("main_read_loop: read_until error: " + ec.message());
             break;
         }
         std::string line;
         std::getline(is, line);
-        audio_mixer::log("main_read_loop: got line: '" + line + "'");
 
         if (line.find(HANDSHAKE) != std::string::npos) {
-            audio_mixer::log("main_read_loop: received heartbeat, responding...");
             std::string response = HANDSHAKE + "\n";
             boost::asio::write(m_serial, boost::asio::buffer(response));
             last_heartbeat = std::chrono::steady_clock::now();
@@ -186,8 +183,6 @@ void serial_connection_c::main_read_loop(bool& exit_app)
         } else {
             // remove trailing newline
             line.erase(line.find_last_not_of("\r\n") + 1); // Removes trailing \r or \n
-
-            audio_mixer::log("main_read_loop: pushing data to stack: '" + line + "'");
             m_data_stack->push(line);
         }
 
@@ -208,10 +203,8 @@ void serial_connection_c::main_read_loop(bool& exit_app)
 // Main run() function: scan, connect, and maintain connection
 void serial_connection_c::run(bool& exit_app)
 {
-    audio_mixer::log("serial_connection_c::run: starting");
     std::string last_connected_port;
     while (!exit_app) {
-        // audio_mixer::log("serial_connection_c::run: scanning for serial ports...");
         bool connected = false;
         for (auto const& port : list_serial_ports()) {
             try {
@@ -222,23 +215,17 @@ void serial_connection_c::run(bool& exit_app)
                 m_serial.set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none));
                 m_serial.set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one));
                 m_serial.set_option(boost::asio::serial_port::flow_control(boost::asio::serial_port::flow_control::none));
-                // audio_mixer::log("Trying port: " + port + "[" + std::to_string(m_baud.value()) + "]");
-                // audio_mixer::log("Waiting for device to reset on port: " + port);
                 std::this_thread::sleep_for(std::chrono::seconds(2));
-                // audio_mixer::log("Waiting for handshake from device on port: " + port);
 
                 if (try_connect_and_handshake(m_serial, port)) {
                     m_port = port;
                     connected = true;
                     if (last_connected_port != port) {
-                        // audio_mixer::log("Serial connection established on port: " + port);
                         last_connected_port = port;
                     }
                     break;
                 }
-                // audio_mixer::log("Failed to connect to device on port: " + port);
                 m_serial.close();
-                // audio_mixer::log("Serial port closed.");
             } catch (const std::exception& ex) {
                 // audio_mixer::log_error("Exception opening port " + port + ": " + ex.what());
                 if (m_serial.is_open()) m_serial.close();
@@ -246,7 +233,6 @@ void serial_connection_c::run(bool& exit_app)
         }
         if (!connected) {
             if (!last_connected_port.empty()) {
-                // audio_mixer::log("Serial device disconnected.");
                 last_connected_port.clear();
             }
             m_port.clear(); // Clear current port on disconnect
@@ -261,6 +247,5 @@ void serial_connection_c::run(bool& exit_app)
         m_port.clear(); // Clear current port after disconnect
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    audio_mixer::log("serial_connection_c::run: exiting");
 }
 } // namespace audio_mixer

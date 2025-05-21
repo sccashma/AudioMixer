@@ -21,7 +21,7 @@ unsigned long lastHeartbeatAck = 0;
 
 void setup() {
   analogReadResolution(12);
-  Serial.begin(9600);
+  Serial.begin(115200);
   handshakeStart = millis();
 }
 
