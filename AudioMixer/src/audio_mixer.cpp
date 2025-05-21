@@ -14,8 +14,7 @@ audio_mixer_c::audio_mixer_c(boost::asio::io_context& context)
       m_data_stack(std::make_shared<stack_c>()),
       m_num_of_knobs(5),
       m_baud_rate(9600U),
-      m_data_rate_ms(50U),
-      m_port("COM12")
+      m_data_rate_ms(50U)
 {
     m_data_stack = std::make_shared<stack_c>();
     load_configs();
@@ -48,8 +47,6 @@ void audio_mixer_c::load_configs()
         m_num_of_knobs = config["num_of_knobs"].as<uint16_t>(5);
         m_baud_rate = baud_rate_t(config["baud_rate"].as<uint32_t>(9600));
         m_data_rate_ms = config["data_rate_ms"].as<uint16_t>(50);
-        m_port = config["port"].as<std::string>("COM12");
-        m_data_pattern = create_regex(m_num_of_knobs);
 
         m_endpoints.clear();
         if (config["endpoints"]) {
@@ -64,14 +61,10 @@ void audio_mixer_c::load_configs()
     } catch (const std::exception& e) {
         audio_mixer::log_error(std::string("Failed to load config.yaml: ") + e.what());
         // Fallback to defaults if needed...
-        m_num_of_knobs = 5U;
-        m_baud_rate = baud_rate_t(9600U);
-        m_data_pattern = create_regex(m_num_of_knobs);
-        m_data_rate_ms = 50U;
-        m_port = "COM12";
-
         m_endpoints.emplace_back(endpoint("master"));
     }
+
+    m_data_pattern = create_regex(m_num_of_knobs);
 }
 
 std::shared_ptr<stack_c> audio_mixer_c::get_data_stack() const
@@ -89,11 +82,6 @@ audio_mixer_c::baud_rate_t audio_mixer_c::get_baud_rate() const
     return this->m_baud_rate;
 }
 
-std::string audio_mixer_c::get_port() const
-{
-    return this->m_port;
-}
-
 void audio_mixer_c::run(bool& exit_app)
 {
     while(!exit_app) {
@@ -102,6 +90,7 @@ void audio_mixer_c::run(bool& exit_app)
 
         if (data) {
             // Make a decision based on the data.
+            audio_mixer::log("Received: " + *data);
             auto vals = extract_values(data.value());
             if (vals.size() != static_cast<int>(m_num_of_knobs)) {
                 audio_mixer::log_error(
@@ -111,6 +100,8 @@ void audio_mixer_c::run(bool& exit_app)
                 // Process the values
                 update(vals);
             }
+        } else {
+            audio_mixer::log("No data received");
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(this->m_data_rate_ms)));
     }
@@ -126,6 +117,7 @@ std::regex audio_mixer_c::create_regex(uint16_t count)
         fullPattern += "\\|" + numberPattern;
     }
     fullPattern += "$";
+    audio_mixer::log("Regex pattern: " + fullPattern);
 
     return std::regex(fullPattern);
 }
@@ -154,7 +146,7 @@ void audio_mixer_c::update_volumes(std::vector<int> const& values) {
 
 void audio_mixer_c::update(std::vector<int> const& values)
 {
-    // TODO: map the values to the corresponding application
+    audio_mixer::log("update: " + std::to_string(values.size()) + " values");
     update_volumes(values);
 
     // Get updated endpoints, filtering out ones that are not desired

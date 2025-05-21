@@ -63,6 +63,12 @@ public:
     
     // Constructor that initializes COM and sets up necessary resources
     windows_media_interface_c()
+        : m_currentDeviceId("")
+        , m_deviceEnumerator(nullptr)
+        , m_device(nullptr)
+        , m_sessionManager(nullptr)
+        , m_endpointVolume(nullptr)
+        , m_com()
     {
         this->initialize();
 
@@ -107,6 +113,8 @@ public:
             return;
         }
 
+        ensure_default_device();
+
         if (!m_endpointVolume) {
             // Activate and cache the endpoint volume interface
             HRESULT hr = m_device->Activate(
@@ -126,6 +134,8 @@ public:
 
     // List application volumes and process IDs
     std::vector<endpoint> get_endpoints() override {
+        ensure_default_device();
+        
         std::vector<endpoint> appVolumeMap;
         if (!m_sessionManager) {
             audio_mixer::log_error("Session manager not initialized.");
@@ -187,6 +197,8 @@ public:
 
     // Set the volume for a specific application
     bool set_application_volume(endpoint const& app) override {
+        ensure_default_device();
+
         if (!m_sessionManager) {
             audio_mixer::log_error("Session manager not initialized.");
             return false;
@@ -330,6 +342,7 @@ private:
     Microsoft::WRL::ComPtr<IMMDevice> m_device;
     Microsoft::WRL::ComPtr<IAudioSessionManager2> m_sessionManager;
     Microsoft::WRL::ComPtr<IAudioEndpointVolume> m_endpointVolume;
+    std::string m_currentDeviceId;
 
     std::string wide_char_proc_to_executable(const wchar_t* wideStr)
     {
@@ -349,6 +362,38 @@ private:
             result = s.substr(pos + 1);
         }
         return result;
+    }
+
+    // Helper to get the current default device ID
+    std::string get_default_device_id() {
+        LPWSTR deviceId = nullptr;
+        HRESULT hr = m_deviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &m_device);
+        if (FAILED(hr) || !m_device) return "";
+        hr = m_device->GetId(&deviceId);
+        if (FAILED(hr) || !deviceId) return "";
+        std::wstring ws(deviceId);
+        CoTaskMemFree(deviceId);
+        return std::string(ws.begin(), ws.end());
+    }
+
+    // Call this before any operation that needs the default device
+    void ensure_default_device() {
+        std::string newId = get_default_device_id();
+        if (newId.empty()) return;
+        if (newId != m_currentDeviceId) {
+            // Reinitialize everything
+            m_device.Reset();
+            m_sessionManager.Reset();
+            m_endpointVolume.Reset();
+
+            HRESULT hr = m_deviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &m_device);
+            if (FAILED(hr)) return;
+            hr = m_device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &m_sessionManager);
+            if (FAILED(hr)) return;
+            hr = m_device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, &m_endpointVolume);
+            if (FAILED(hr)) return;
+            m_currentDeviceId = newId;
+        }
     }
 };
 

@@ -49,6 +49,7 @@ std::optional<std::string> stack_c::get_latest_match(std::regex const& pattern)
     // Find the most recently match
     while (!stack_.empty()) {
         std::string topElement = stack_.top();
+        audio_mixer::log("stack_c::get_latest_match: " + topElement);
         stack_.pop();
         if (std::regex_match(topElement, pattern)) {
             result = topElement; // Save the most recent match
@@ -57,6 +58,7 @@ std::optional<std::string> stack_c::get_latest_match(std::regex const& pattern)
     }
 
     clear();
+    audio_mixer::log("stack_c::get_latest_match: " + (result ? *result : "No match found"));
     return result;
 }
 

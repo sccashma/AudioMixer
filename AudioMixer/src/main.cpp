@@ -1,7 +1,7 @@
 #include "audio_mixer.hpp"
 #include "AudioMixerConfig.h"
 #include "logger.hpp"
-#include "Serial.hpp"
+#include "serial.hpp"
 
 #include <boost/asio.hpp>
 #include <thread>
@@ -47,11 +47,19 @@ int main() {
     try {
         boost::asio::io_context io_context;
         audio_mixer::audio_mixer_c app(io_context);
-        audio_mixer::serial_connection_c connection(
-            io_context, app.get_data_stack(), app.get_port(), app.get_baud_rate(), app.get_data_rate());
+        audio_mixer::serial_connection_c connection(io_context, app.get_data_stack(), app.get_baud_rate());
 
         // Run Serial interface in a separate thread
-        auto serial_run = [&connection]() { connection.run(exit_app); };
+        auto serial_run = [&connection]()
+        { 
+            try {
+                connection.run(exit_app);
+            } catch (const std::exception& e) {
+                audio_mixer::log_error(std::string("Serial Thread|Exception: ") + e.what()); 
+            } catch (...) {
+                audio_mixer::log_error("Serial Thread|Unknown exception occurred");
+            }
+        };
         std::thread serial_thread(serial_run);
 
         while (!exit_app) {
@@ -62,6 +70,8 @@ int main() {
 
     } catch (const std::exception& e) {
         audio_mixer::log_error(std::string("Exception: ") + e.what());
+    } catch (...) {
+        audio_mixer::log_error("Main Thread|Unknown exception occurred");
     }
 
     audio_mixer::log("AudioMixer exiting");

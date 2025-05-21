@@ -30,8 +30,6 @@ public:
 
     baud_rate_t get_baud_rate() const;
 
-    std::string get_port() const;
-
     void run(bool& exit_app);
     void update(std::vector<int> const& values);
 
@@ -41,7 +39,6 @@ private:
 #ifdef _WIN32
     audio_mixer::windows_media_interface_c m_media;
 #endif
-    std::string m_port;
     baud_rate_t m_baud_rate;
     uint16_t m_data_rate_ms;
     std::regex m_data_pattern;

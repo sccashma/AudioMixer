@@ -39,6 +39,7 @@ target_link_libraries(AudioMixer
     ole32
     oleaut32
     psapi
+    setupapi
     Threads::Threads
     Uiautomationcore
     uuid

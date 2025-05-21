@@ -1,7 +1,6 @@
 num_of_knobs: 5
 baud_rate: 9600
 data_rate_ms: 50
-port: COM12
 endpoints:
   - master
   - chrome.exe
