@@ -61,7 +61,7 @@ namespace audio_mixer
 
             for (auto &app : m_endpoints)
             {
-                audio_mixer::log("Loaded: " + app.name);
+                audio_mixer::log_info("Loaded: " + app.name);
             }
         }
         catch (const std::exception &e)

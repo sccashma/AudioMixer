@@ -38,7 +38,7 @@ int main()
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 #endif
 
-    audio_mixer::log("AudioMixer Version " + std::to_string(AudioMixer_VERSION_MAJOR) + "." +
+    audio_mixer::log_info("AudioMixer Version " + std::to_string(AudioMixer_VERSION_MAJOR) + "." +
                      std::to_string(AudioMixer_VERSION_MINOR));
 
     try
@@ -81,7 +81,7 @@ int main()
         audio_mixer::log_error("Main Thread|Unknown exception occurred");
     }
 
-    audio_mixer::log("AudioMixer exiting");
+    audio_mixer::log_info("AudioMixer exiting");
 
 #ifdef _DEBUG
     _CrtDumpMemoryLeaks();

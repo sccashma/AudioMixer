@@ -42,8 +42,8 @@ namespace audio_mixer
         for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &DeviceInfoData); ++i)
         {
             char buf[256];
-            if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_FRIENDLYNAME, nullptr, (PBYTE)buf,
-                                                  sizeof(buf), nullptr))
+            if (SetupDiGetDeviceRegistryPropertyA(
+                hDevInfo, &DeviceInfoData, SPDRP_FRIENDLYNAME, nullptr, (PBYTE)buf, sizeof(buf), nullptr))
             {
                 std::string name(buf);
                 auto pos = name.find(" (COM");
@@ -81,18 +81,13 @@ namespace audio_mixer
             closedir(dp);
         }
 #endif
-        // log the found ports
-        for (auto const &port : ports)
-        {
-            // audio_mixer::log("Found serial port: " + port);
-        }
         return ports;
     }
 
     // Read a line with timeout
     // This function uses async_read_until and a timer to implement the timeout
-    bool read_line_with_timeout(boost::asio::io_context &io_ctx, boost::asio::serial_port &serial, std::string &line,
-                                int timeout_ms)
+    bool read_line_with_timeout(
+        boost::asio::io_context &io_ctx, boost::asio::serial_port &serial, std::string &line, int timeout_ms)
     {
         using namespace boost;
         auto buf = std::make_shared<asio::streambuf>();
@@ -133,29 +128,26 @@ namespace audio_mixer
     // Update try_connect_and_handshake to use an open serial port:
     bool serial_connection_c::try_connect_and_handshake(boost::asio::serial_port &serial, const std::string &port)
     {
-        // audio_mixer::log("try_connect_and_handshake: starting");
         boost::asio::io_context io_ctx;
         std::string line;
         if (read_line_with_timeout(io_ctx, serial, line, HANDSHAKE_TIMEOUT_MS))
         {
-            // audio_mixer::log("Received during handshake: " + line);
             if (line.find(HANDSHAKE_KEY) != std::string::npos)
             {
+                audio_mixer::log_info("Handshake successful on port: " + port);
                 std::string response = HANDSHAKE_RESPONSE + "\n";
                 boost::asio::write(serial, boost::asio::buffer(response));
-                // audio_mixer::log("Sent handshake response to device on port: " + port);
                 return true;
             }
         }
-        // audio_mixer::log("Failed to receive handshake from device on port: " + port);
         if (serial.is_open())
             serial.close();
         return false;
     }
 
     // Constructor/Destructor
-    serial_connection_c::serial_connection_c(boost::asio::io_context &context, std::shared_ptr<stack_c> stack,
-                                             baud_rate_t const &baud)
+    serial_connection_c::serial_connection_c(
+        boost::asio::io_context &context, std::shared_ptr<stack_c> stack, baud_rate_t const &baud)
         : m_context(context), m_serial(context), m_data_stack(stack), m_port(""), m_baud(baud)
     {
         // Connection handled in run()
@@ -171,7 +163,6 @@ namespace audio_mixer
     // Main read loop: wait for heartbeat and process data
     void serial_connection_c::main_read_loop(bool &exit_app)
     {
-        // audio_mixer::log("main_read_loop: starting");
         auto last_heartbeat = std::chrono::steady_clock::now();
         boost::asio::streambuf buf;
         std::istream is(&buf);
@@ -180,7 +171,6 @@ namespace audio_mixer
 
         while (!exit_app && m_serial.is_open())
         {
-            // audio_mixer::log("main_read_loop: waiting for line...");
             boost::system::error_code ec;
             size_t n = boost::asio::read_until(m_serial, buf, "\n", ec);
             if (ec)
@@ -209,7 +199,7 @@ namespace audio_mixer
             {
                 if (!disconnected_logged)
                 {
-                    audio_mixer::log("Serial device disconnected from port: " + m_port);
+                    audio_mixer::log_info("Serial device disconnected from port: " + m_port);
                     disconnected_logged = true;
                 }
                 audio_mixer::log_error("Lost heartbeat, disconnecting serial.");
@@ -217,9 +207,11 @@ namespace audio_mixer
                 break;
             }
         }
-        // audio_mixer::log("main_read_loop: exiting, m_serial.is_open()=" + std::to_string(m_serial.is_open()));
         if (m_serial.is_open())
+        {
             m_serial.close();
+            audio_mixer::log_error("Serial port closed: " + m_port + (exit_app ? ". Exiting application." : ""));
+        }
     }
 
     // Main run() function: scan, connect, and maintain connection
@@ -258,7 +250,7 @@ namespace audio_mixer
                 }
                 catch (const std::exception &ex)
                 {
-                    // audio_mixer::log_error("Exception opening port " + port + ": " + ex.what());
+                    audio_mixer::log_error("Exception opening port " + port + ": " + ex.what());
                     if (m_serial.is_open())
                         m_serial.close();
                 }
