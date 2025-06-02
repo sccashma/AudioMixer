@@ -38,8 +38,20 @@ int main()
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 #endif
 
-    audio_mixer::log_info("AudioMixer Version " + std::to_string(AudioMixer_VERSION_MAJOR) + "." +
+    // Initialize logging
+    // TODO: Make this configurable using command line arguments or config file
+    audio_mixer::logger_c::instance().set_log_level(audio_mixer::logger_c::LogLevel::DEBUG);
+    audio_mixer::log_info("AudioMixer starting");
+    audio_mixer::log_debug("AudioMixer build version: " + std::to_string(AudioMixer_VERSION_MAJOR) + "." +
                      std::to_string(AudioMixer_VERSION_MINOR));
+    audio_mixer::log_debug("Build date: " __DATE__ " " __TIME__);
+    audio_mixer::log_debug("Platform: " + std::string(
+#ifdef _WIN32
+        "Windows"
+#else
+        "Linux"
+#endif
+    ));
 
     try
     {
@@ -82,10 +94,6 @@ int main()
     }
 
     audio_mixer::log_info("AudioMixer exiting");
-
-#ifdef _DEBUG
-    _CrtDumpMemoryLeaks();
-#endif
 
     return 0;
 }

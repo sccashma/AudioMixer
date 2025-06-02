@@ -22,13 +22,15 @@ namespace audio_mixer
     class logger_c
     {
     public:
-        enum class LogLevel
+        enum LogLevel
         {
             DEBUG,
             INFO,
             WARNING,
-            ERROR
+            LOG_ERROR
         };
+
+        LogLevel m_log_level;
 
         void set_log_level(LogLevel level)
         {
@@ -80,7 +82,7 @@ namespace audio_mixer
    
         void log_error(std::string const &msg)
         {
-            log(LogLevel::ERROR, "[ERROR] " + msg);
+            log(LogLevel::LOG_ERROR, "[ERROR] " + msg);
         }
 
     private: 

@@ -20,10 +20,11 @@ namespace audio_mixer
 
         // Start the context
         std::thread con_thread(
-            [this]()
-            {
-            boost::asio::io_context::work work(m_context);
-            m_context.run(); });
+            [this]() {
+                boost::asio::io_context::work work(m_context);
+                m_context.run();
+            }
+        );
         con_thread.detach();
     }
 
