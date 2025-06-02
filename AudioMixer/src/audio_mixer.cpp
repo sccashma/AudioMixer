@@ -16,7 +16,6 @@ namespace audio_mixer
           m_baud_rate(9600U),
           m_data_rate_ms(50U)
     {
-        m_data_stack = std::make_shared<stack_c>();
         load_configs();
 
         // Start the context
