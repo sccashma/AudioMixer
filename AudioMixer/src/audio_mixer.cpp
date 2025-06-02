@@ -16,15 +16,15 @@ namespace audio_mixer
           m_baud_rate(9600U),
           m_data_rate_ms(50U)
     {
-        m_data_stack = std::make_shared<stack_c>();
         load_configs();
 
         // Start the context
         std::thread con_thread(
-            [this]()
-            {
-            boost::asio::io_context::work work(m_context);
-            m_context.run(); });
+            [this]() {
+                boost::asio::io_context::work work(m_context);
+                m_context.run();
+            }
+        );
         con_thread.detach();
     }
 

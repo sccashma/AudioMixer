@@ -20,7 +20,7 @@ namespace audio_mixer
 
     namespace
     {
-        const std::string HANDSHAKE = "AUDIOMIXER_V1_HEARTBEAT";
+        const std::string HEARTBEAT = "AUDIOMIXER_V1_HEARTBEAT";
         const std::string HANDSHAKE_KEY = "AUDIOMIXER_HELLO";
         const std::string HANDSHAKE_RESPONSE = "AUDIOMIXER_READY";
         constexpr int HANDSHAKE_TIMEOUT_MS = 1000;
@@ -54,12 +54,14 @@ namespace audio_mixer
                     if (start != std::string::npos && end != std::string::npos)
                     {
                         ports.emplace_back(name.substr(start, end - start));
+                        audio_mixer::log_debug("Found serial port: " + ports.back());
                     }
                 }
             }
         }
         SetupDiDestroyDeviceInfoList(hDevInfo);
 #else
+        // INFO: UNTESTED: This code is for Linux/macOS
         const char *dirs[] = {"/dev/"};
         const char *prefixes[] = {"ttyACM", "ttyUSB", "cu.usb"};
         for (auto dir : dirs)
@@ -132,16 +134,19 @@ namespace audio_mixer
         std::string line;
         if (read_line_with_timeout(io_ctx, serial, line, HANDSHAKE_TIMEOUT_MS))
         {
+            audio_mixer::log_debug("Received handshake line: " + line);
             if (line.find(HANDSHAKE_KEY) != std::string::npos)
             {
-                audio_mixer::log_info("Handshake successful on port: " + port);
                 std::string response = HANDSHAKE_RESPONSE + "\n";
                 boost::asio::write(serial, boost::asio::buffer(response));
+                audio_mixer::log_info("Handshake successful on port: " + port);
                 return true;
             }
+            else
+            {
+                audio_mixer::log_debug("Invalid handshake response on port: " + port);
+            }
         }
-        if (serial.is_open())
-            serial.close();
         return false;
     }
 
@@ -178,20 +183,26 @@ namespace audio_mixer
                 audio_mixer::log_error("main_read_loop: read_until error: " + ec.message());
                 break;
             }
+
             std::string line;
             std::getline(is, line);
 
-            if (line.find(HANDSHAKE) != std::string::npos)
+            if (line.find(HEARTBEAT) != std::string::npos)
             {
-                std::string response = HANDSHAKE + "\n";
+                std::string response = HEARTBEAT + "\n";
                 boost::asio::write(m_serial, boost::asio::buffer(response));
                 last_heartbeat = std::chrono::steady_clock::now();
+                audio_mixer::log_debug("Heartbeat received from serial port: " + m_port + " at:" 
+                                       + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                             last_heartbeat.time_since_epoch())
+                                             .count()));
                 disconnected_logged = false; // Reset on heartbeat
             }
             else
             {
                 // remove trailing newline
                 line.erase(line.find_last_not_of("\r\n") + 1); // Removes trailing \r or \n
+                audio_mixer::log_debug("Data received from serial port: " + m_port + " - " + line);
                 m_data_stack->push(line);
             }
 
@@ -199,11 +210,14 @@ namespace audio_mixer
             {
                 if (!disconnected_logged)
                 {
-                    audio_mixer::log_info("Serial device disconnected from port: " + m_port);
+                    audio_mixer::log_warning("Lost heartbeat, serial device disconnected from port: " + m_port);
                     disconnected_logged = true;
                 }
-                audio_mixer::log_error("Lost heartbeat, disconnecting serial.");
-                m_serial.close();
+                else
+                {
+                    // TODO: Confirming if this check is actually neeeded.
+                    audio_mixer::log_debug("logging disconnection \"disconnected_logged\" required!");
+                }
                 break;
             }
         }
@@ -227,6 +241,7 @@ namespace audio_mixer
                 {
                     if (m_serial.is_open())
                         m_serial.close(); // Ensure clean state
+                    audio_mixer::log_debug("Trying to connect to port: " + port);
                     m_serial.open(port);
                     m_serial.set_option(m_baud);
                     m_serial.set_option(boost::asio::serial_port::character_size(8));
@@ -244,15 +259,19 @@ namespace audio_mixer
                         {
                             last_connected_port = port;
                         }
+                        audio_mixer::log_info("Connected to serial port: " + port);
                         break;
                     }
                     m_serial.close();
                 }
                 catch (const std::exception &ex)
                 {
-                    audio_mixer::log_error("Exception opening port " + port + ": " + ex.what());
+                    audio_mixer::log_warning("Exception opening port " + port + ": " + ex.what());
                     if (m_serial.is_open())
+                    {
+                        audio_mixer::log_warning("Failed to connect to port: " + port + ". Closing serial port.");
                         m_serial.close();
+                    }
                 }
             }
             if (!connected)
@@ -269,8 +288,6 @@ namespace audio_mixer
             // --- Data/heartbeat phase ---
             main_read_loop(exit_app);
 
-            if (m_serial.is_open())
-                m_serial.close();
             m_port.clear(); // Clear current port after disconnect
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
