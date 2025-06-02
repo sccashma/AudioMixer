@@ -22,15 +22,33 @@ namespace audio_mixer
     class logger_c
     {
     public:
+        enum class LogLevel
+        {
+            DEBUG,
+            INFO,
+            WARNING,
+            ERROR
+        };
+
+        void set_log_level(LogLevel level)
+        {
+            m_log_level = level;
+        }
+
         static logger_c &instance()
         {
             static logger_c inst;
             return inst;
         }
 
-        void log(const std::string &msg)
+        void log(LogLevel level, const std::string &msg)
         {
             std::lock_guard<std::mutex> lock(mutex_);
+            if (level < m_log_level)
+            {
+                return;
+            }
+
             checkRolling();
             // Get current time
             auto now = std::chrono::system_clock::now();
@@ -45,9 +63,24 @@ namespace audio_mixer
             logfile_.flush();
         }
 
-        void log_error(const std::string &msg)
+        void log_debug(std::string const &msg)
         {
-            log("[ERROR] " + msg);
+            log(LogLevel::DEBUG, "[DEBUG] " + msg);
+        }
+
+        void log_info(std::string const &msg)
+        {
+            log(LogLevel::INFO, "[INFO] " + msg);
+        }
+
+        void log_warning(std::string const &msg)
+        {
+            log(LogLevel::WARNING, "[WARNING] " + msg);
+        }
+   
+        void log_error(std::string const &msg)
+        {
+            log(LogLevel::ERROR, "[ERROR] " + msg);
         }
 
     private: 
@@ -71,6 +104,9 @@ namespace audio_mixer
 #endif
             logPath_ = path;
             openLogFile();
+
+            // Set default log level
+            m_log_level = LogLevel::INFO; // Default to INFO level
         }
 
         ~logger_c()
@@ -164,10 +200,21 @@ namespace audio_mixer
         std::string logPath_;
     };
 
+    inline void log_debug(const std::string &msg)
+    {
+        logger_c::instance().log_debug(msg);
+    }
+
     inline void log_info(const std::string &msg)
     {
-        logger_c::instance().log(msg);
+        logger_c::instance().log_info(msg);
     }
+
+    inline void log_warning(const std::string &msg)
+    {
+        logger_c::instance().log_warning(msg);
+    }
+
     inline void log_error(const std::string &msg)
     {
         logger_c::instance().log_error(msg);
